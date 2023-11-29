@@ -23,12 +23,21 @@ module async_fifo_core
 	// output logic w_cnt
 );
 
+// local declarations
 logic [DW - 1:0] mem [DEPTH - 1:0];
 
 logic [AW - 1:0] waddr, waddr_next, waddr_g, waddr_g_next, waddr_g_sync;
 logic [AW - 1:0] raddr, raddr_next, raddr_g, raddr_g_next, raddr_g_sync;
 
-
+// checks
+initial begin
+	assert ( DEPTH == (1 << $clog2(DEPTH)) ) begin
+		$display("DEPTH = %d\n", DEPTH);
+	end
+	else begin
+		$display("DEPTH must be a power of two!\n");
+	end
+end
 
 //--------------write domain---------------
 
@@ -39,7 +48,7 @@ always_ff @ (posedge wclk or posedge wrst)
 			mem[i] <= 0;
 		end
 	end
-	else if (wen)
+	else if (wen) // no check of full, because axis wrapper ensures no wen while !ready (<=> full)
 		mem[waddr] <= wdata;
 
 
@@ -47,7 +56,7 @@ always_ff @ (posedge wclk or posedge wrst)
 always_ff @ (posedge wclk or posedge wrst)
 	if (wrst)
 		waddr <= 0;
-	else if (wen)
+	else if (wen) // no check of full, because axis wrapper ensures no wen while !ready (<=> full)
 		waddr <= waddr_next;
 
 assign waddr_next = waddr + 'd1;
@@ -83,7 +92,7 @@ assign full = ({~waddr_g[AW - 1:AW - 2], waddr_g[AW - 3:0]} == raddr_g_sync);
 always_ff @ (posedge rclk or posedge rrst)
 	if (rrst)
 		raddr <= 0;
-	else if (ren)
+	else if (ren) // no check of empty, because axis wrapper ensures no ren while !valid (<=> empty)
 		raddr <= raddr_next;
 
 assign raddr_next = raddr + 'd1;
@@ -93,7 +102,7 @@ assign raddr_next = raddr + 'd1;
 always_ff @ (posedge rclk or posedge rrst)
 	if (rrst)
 		raddr_g <= 0;
-	else if (ren)
+	else if (ren) // no check of empty, because axis wrapper ensures no ren while !valid (<=> empty)
 		raddr_g <= raddr_g_next;
 
 assign raddr_g_next = (raddr_next >> 1) ^ raddr_next;
